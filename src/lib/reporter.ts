@@ -1,13 +1,18 @@
-const terminalLink = require('terminal-link')
-const Handlebars = require('handlebars')
-const moment = require('moment')
-const marked = require('marked')
-const fs = require('fs-extra')
-const chalk = require('chalk')
-const numeral = require('numeral')
-const highlight = require('highlight.js')
+import terminalLink from 'terminal-link'
+import Handlebars from 'handlebars'
+import moment from 'moment'
+import marked from 'marked'
+import fs from 'fs-extra'
+import chalk from 'chalk'
+import numeral from 'numeral'
+import highlight from 'highlight.js'
 
-const severityMap = {
+const severityMap: {
+  [key: string]: {
+    color: string
+    number: number
+  }
+} = {
   info: {
     color: 'info',
     number: 5
@@ -30,12 +35,37 @@ const severityMap = {
   }
 }
 
-const generateTemplate = async (data, template) => {
+export interface ReportOverview {
+  totalVulnerabilities: number
+  totalDependencies: number
+  critical: number
+  high: number
+  moderate: number
+  low: number
+  info: number
+}
+export interface Report {
+  createdAt: Date
+  overview: ReportOverview
+  advisories: any[]
+}
+
+export interface Reporter {
+  transformReport(data: any): Promise<Report>
+}
+
+export class NpmAuditReportVersion1 implements Reporter {
+  async transformReport(data: any): Promise<Report> {
+    return
+  }
+}
+
+const generateTemplate = async (data: any, template: string) => {
   const htmlTemplate = await fs.readFile(template, 'utf8')
   return Handlebars.compile(htmlTemplate)(data)
 }
 
-const writeReport = async (report, output) => {
+const writeReport = async (report, output: string) => {
   await fs.ensureFile(output)
   await fs.writeFile(output, report)
 }
@@ -43,10 +73,10 @@ const writeReport = async (report, output) => {
 const modifyData = async data => {
   const vulnerabilities = data.metadata.vulnerabilities || []
 
-  //   for (const act in data.actions) {
-  //     const action = data.actions[act]
-  //     console.log(action)
-  //   }
+  // for (const act in data.actions) {
+  //   const action = data.actions[act]
+  //   console.log(action)
+  // }
 
   // calculate totals
   let total = 0
@@ -60,7 +90,19 @@ const modifyData = async data => {
   return data
 }
 
-module.exports = async (data, templateFile, outputFile, theme) => {
+export interface GenerateReportOptions {
+  data: any
+  templateFile: string
+  outputFile: string
+  theme: string
+}
+
+export const generateReport = async ({
+  data,
+  templateFile,
+  outputFile,
+  theme
+}: GenerateReportOptions): Promise<any> => {
   try {
     if (!data.metadata) {
       if (data.updated) {
@@ -114,17 +156,17 @@ Handlebars.registerHelper('if_eq', (a, b, opts) => {
 
 Handlebars.registerHelper(
   'severityClass',
-  severity => severityMap[severity].color
+  (severity: string) => severityMap[severity].color
 )
 
 Handlebars.registerHelper(
   'severityNumber',
-  severity => severityMap[severity].number
+  (severity: string) => severityMap[severity].number
 )
 
 Handlebars.registerHelper('markdown', source =>
   marked(source, {
-    highlight: code => {
+    highlight: (code: string) => {
       return highlight.highlightAuto(code).value
     },
     gfm: true
